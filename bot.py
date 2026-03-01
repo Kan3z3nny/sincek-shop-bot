@@ -7,7 +7,7 @@ from threading import Thread
 # --- 1. SERVER SETUP ---
 app = Flask('')
 @app.route('/')
-def home(): return "SinceKShop Bot is Running!"
+def home(): return "Bot is live!"
 
 def run():
     port = int(os.environ.get('PORT', 8080))
@@ -63,7 +63,7 @@ def welcome(message):
     mk.add("🛍 ဈေးဝယ်ရန်", "🎁 ပရိုမိုးရှင်း")
     mk.add("👤 မိမိအကောင့်", "📜 order မှတ်တမ်း")
     mk.add("📞 Admin ဆက်သွယ်ရန်", "🤝 သင့်ငယ်ချင်းဖိတ်ရန်")
-    bot.send_message(message.chat.id, "👋 **SinceKShop** မှ ကြိုဆိုပါတယ်ခင်ဗျာ။", reply_markup=mk, parse_mode="HTML")
+    bot.send_message(message.chat.id, "👋 **SinceKShop** မှ ကြိုဆိုပါတယ်ခင်ဗျာ။", reply_markup=mk)
 
 @bot.message_handler(func=lambda m: True)
 def handle_menu(message):
@@ -77,19 +77,19 @@ def handle_menu(message):
         bot.send_message(uid, "ပရိုမိုးရှင်း မရှိသေးပါ 🙏")
 
     elif message.text == "👤 မိမိအကောင့်":
-        bot.send_message(uid, f"👤 **မိမိအကောင့်အချက်အလက်**\n\nအမည်: {message.from_user.first_name}\nID: `{uid}`", parse_mode="HTML")
+        bot.send_message(uid, f"👤 <b>မိမိအကောင့်အချက်အလက်</b>\n\nအမည်: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
 
     elif message.text == "📜 order မှတ်တမ်း":
         bot.send_message(uid, "📅 သင်၏ Order မှတ်တမ်းမှာ လောလောဆယ် အားနေပါသည်။")
 
     elif message.text == "📞 Admin ဆက်သွယ်ရန်":
-        bot.send_message(uid, f"👨‍💻 Admin ကို တိုက်ရိုက်ဆက်သွယ်ရန် - {ADMIN_USERNAME}")
+        bot.send_message(uid, f"👨‍💻 Admin ကို ဆက်သွယ်ရန် - {ADMIN_USERNAME}")
 
     elif message.text == "🤝 သင့်ငယ်ချင်းဖိတ်ရန်":
         link = "https://t.me/SinceKshop_Bot"
-        bot.send_message(uid, f"🔗 သင့်သူငယ်ချင်းများကို ဖိတ်ခေါ်ရန် လင့်ခ်:\n`{link}`", parse_mode="HTML")
+        bot.send_message(uid, f"🔗 သင့်သူငယ်ချင်းများကို ဖိတ်ခေါ်ရန် လင့်ခ်:\n<code>{link}</code>", parse_mode="HTML")
 
-# --- 5. SHOPPING FLOW ---
+# --- 5. ORDER FLOW ---
 @bot.callback_query_handler(func=lambda call: call.data == "game_mlbb")
 def mlbb_list(call):
     mk = types.InlineKeyboardMarkup(row_width=2)
@@ -101,7 +101,7 @@ def mlbb_list(call):
 def ask_id(call):
     item = call.data.replace("buy_", "")
     user_orders[call.message.chat.id] = {'item': item, 'price': MLBB_PRICES[item]}
-    bot.edit_message_text(f"✅ Selected: **{item}**\n\n📝 MLBB ID နှင့် Server ID ပေးပို့ပါ။", call.message.chat.id, call.message.message_id, parse_mode="HTML")
+    bot.edit_message_text(f"✅ Selected: <b>{item}</b>\n\n📝 MLBB ID နှင့် Server ID ပေးပို့ပါ။", call.message.chat.id, call.message.message_id, parse_mode="HTML")
     bot.register_next_step_handler(call.message, ask_payment_method)
 
 def ask_payment_method(message):
@@ -119,9 +119,9 @@ def show_pay_info(call):
     order = user_orders.get(call.message.chat.id)
     if not order: return
     
-    pay_dt = f"💰 **KBZ Pay**\nNo: `09982015936`\nName: **Thandar Soe**" if method == "kpay" else f"💰 **Wave Pay**\nNo: `09740027247`\nName: **Soe Yan Naing**"
+    pay_dt = f"💰 <b>KBZ Pay</b>\nNo: <code>09982015936</code>\nName: <b>Thandar Soe</b>" if method == "kpay" else f"💰 <b>Wave Pay</b>\nNo: <code>09740027247</code>\nName: <b>Soe Yan Naing</b>"
     
-    msg = (f"📝 **Order Summary**\nProduct: {order['item']}\nID: {order['game_id']}\n\n"
+    msg = (f"📋 <b>Order Summary</b>\nProduct: {order['item']}\nID: <code>{order['game_id']}</code>\n\n"
            f"{pay_dt}\n\n⚠️ ငွေလွှဲပြီး Screenshot ပို့ပေးပါ။")
     bot.edit_message_text(msg, call.message.chat.id, call.message.message_id, parse_mode="HTML")
 
@@ -131,23 +131,30 @@ def handle_screenshot(message):
     if uid in user_orders:
         order = user_orders[uid]
         bot.reply_to(message, "✅ Screenshot ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
-        admin_text = f"🛒 **NEW ORDER**\n👤 User: {message.from_user.first_name}\n🆔 ID: `{uid}`\n📦 Item: {order['item']}\n🎮 ID: `{order['game_id']}`"
+        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 User: {message.from_user.first_name}\n🆔 User ID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 Game ID: <code>{order['game_id']}</code>"
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"adm_app_{uid}"),
                types.InlineKeyboardButton("❌ Reject", callback_data=f"adm_rej_{uid}"))
         bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=mk)
 
-# --- 6. ADMIN ACTIONS ---
+# --- 6. ADMIN ACTIONS (FIXED ERROR) ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("adm_"))
 def admin_action(call):
     data = call.data.split("_")
-    action, target_uid = data[1], int(data[2])
-    if action == "app":
-        bot.send_message(target_uid, "⌛ Admin မှ စတင်စစ်ဆေးနေပါပြီ။")
-        bot.answer_callback_query(call.id, "Approved!")
-    elif action == "rej":
-        bot.send_message(target_uid, "❌ သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။")
-        bot.answer_callback_query(call.id, "Rejected!")
+    action = data[1]
+    target_uid = int(data[2])
+    
+    try:
+        if action == "app":
+            bot.send_message(target_uid, "⌛ Admin မှ စတင်စစ်ဆေးနေပါပြီ။")
+            bot.answer_callback_query(call.id, "Approved!")
+            bot.edit_message_caption(caption=call.message.caption + "\n\n✅ <b>Status: Approved</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode="HTML", reply_markup=None)
+        elif action == "rej":
+            bot.send_message(target_uid, "❌ သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။")
+            bot.answer_callback_query(call.id, "Rejected!")
+            bot.edit_message_caption(caption=call.message.caption + "\n\n❌ <b>Status: Rejected</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode="HTML", reply_markup=None)
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"Error: {e}")
 
 # --- 7. BROADCAST ---
 @bot.message_handler(commands=['cast'])
