@@ -4,7 +4,7 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- ၁။ RENDER PORT BINDING SYSTEM (PORT ERROR မတက်အောင် ထည့်ခြင်း) ---
+# --- ၁။ RENDER PORT BINDING SYSTEM ---
 app = Flask('')
 
 @app.route('/')
@@ -12,7 +12,6 @@ def home():
     return "Bot is alive and running on Render!"
 
 def run():
-    # Render ရဲ့ Port ကို ဖမ်းယူခြင်း၊ မရှိပါက 8080 ကို သုံးခြင်း
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
@@ -50,7 +49,7 @@ def save_user(uid):
 def get_all_users():
     if not os.path.exists(USER_FILE): return []
     try:
-        with open(USER_FILE, "r") as f:
+        with open(USER_FILE, "r", encoding="utf-8") as f:
             return [line.strip() for line in f.readlines() if line.strip()]
     except: return []
 
@@ -72,7 +71,7 @@ def get_order_history(uid):
     except: return "❌ မှတ်တမ်းဖတ်မရပါ။"
     return history if history else "❌ မှတ်တမ်းမရှိသေးပါ။"
 
-# --- ၄။ MENUS & BROADCAST ---
+# --- ၄။ MENUS & BROADCAST (ပြင်ဆင်ပြီး) ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🛍 ဈေးဝယ်ရန်", "🎁 ပိုမိုရှင်း")
@@ -85,6 +84,8 @@ def broadcast_prompt(message):
     if message.chat.id == ADMIN_ID:
         sent = bot.send_message(ADMIN_ID, "📢 အားလုံးကိုပို့မည့် **စာ** သို့မဟုတ် **ပုံ** ကို ပို့ပေးပါ။")
         bot.register_next_step_handler(sent, do_broadcast)
+    else:
+        bot.send_message(message.chat.id, "⚠️ သင်သည် Admin မဟုတ်ပါ။")
 
 def do_broadcast(message):
     users = get_all_users()
@@ -103,7 +104,7 @@ def do_broadcast(message):
         except: pass
     bot.send_message(ADMIN_ID, f"✅ စုစုပေါင်း User {count} ဦးထံ အောင်မြင်စွာ ပို့ပြီးပါပြီ။")
 
-# --- ၅။ SHOPPING LOGIC (စျေးနှုန်းများအားလုံး ပါဝင်သည်) ---
+# --- ၅။ SHOPPING LOGIC ---
 MLBB_PRICES = {
     "Wkp 1": "6200", "Wkp 2": "12400", "Wkp 3": "18600", "Wkp 4": "24800", "Wkp 5": "31000",
     "Twlp": "33000", "Dia 50+50": "3800", "Dia 150+150": "11000", "Dia 250+250": "17000",
@@ -198,7 +199,8 @@ def admin_action(call):
         mk.add(types.InlineKeyboardButton("📦 ပစ္စည်းထည့်ပြီးကြောင်း ပို့ရန်", callback_data=f"adm_done_{target_uid}"))
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=mk)
     elif action == "rej":
-        bot.send_message(target_uid, "❌ <b>သင့် Order ကို ပယ်ချလိုက်ပါသည်။</b>")
+        # စာလုံးအမည်း (HTML) အလုပ်လုပ်အောင် ပြင်ထားပါတယ်
+        bot.send_message(target_uid, "❌ <b>သင့် Order ကို ပယ်ချလိုက်ပါသည်။</b>", parse_mode="HTML")
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     elif action == "done":
         order = user_orders.get(target_uid)
@@ -208,8 +210,10 @@ def admin_action(call):
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         if target_uid in user_orders: del user_orders[target_uid]
 
-# --- ၆။ STARTUP (Flask နဲ့ Bot polling ကို တွဲနှိုးခြင်း) ---
+# --- ၆။ STARTUP ---
 if __name__ == "__main__":
-    keep_alive() # Render အတွက် Port အရင်ဖွင့်ပေးမှာပါ
+    keep_alive()
     print("Bot is starting...")
-    bot.infinity_polling(none_stop=True)
+    # Bot နှစ်ခု တစ်ပြိုင်တည်း run ခြင်းကြောင့် ဖြစ်တတ်တဲ့ Conflict error ကို ကာကွယ်ရန်
+    bot.remove_webhook()
+    bot.infinity_polling(none_stop=True, skip_pending=True)
