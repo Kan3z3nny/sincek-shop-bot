@@ -4,7 +4,7 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- ၁။ RENDER PORT BINDING ---
+# --- 1. RENDER PORT BINDING ---
 app = Flask('')
 @app.route('/')
 def home(): return "Bot is alive!"
@@ -17,7 +17,7 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# --- ၂။ CONFIGURATION ---
+# --- 2. CONFIGURATION ---
 TOKEN = '8509360517:AAEGBq3B3kxqQNYJZN4KNjIII9G-ztPvSlo'
 ADMIN_ID = 8046242647 
 ADMIN_USERNAME = "@since_K" 
@@ -28,11 +28,8 @@ WAVE_NAME = "Soe Yan Naing"
 
 bot = telebot.TeleBot(TOKEN)
 
-# --- ၃။ STORAGE SYSTEM ---
+# --- 3. STORAGE SYSTEM ---
 USER_FILE = "users.txt"
-ORDER_FILE = "orders_history.txt"
-user_orders = {}
-
 def save_user(uid):
     uid = str(uid)
     try:
@@ -51,9 +48,8 @@ def get_all_users():
             return [line.strip() for line in f.readlines() if line.strip()]
     except: return []
 
-# --- ၄။ ADMIN COMMANDS (/cast & /sent) ---
+# --- 4. ADMIN COMMANDS (ဒီနေရာကို Handler ထိပ်ဆုံးမှာ ထားရပါမယ်) ---
 
-# အားလုံးကို စာပို့ရန် (Broadcast)
 @bot.message_handler(commands=['cast'])
 def broadcast_prompt(message):
     if message.chat.id == ADMIN_ID:
@@ -76,7 +72,6 @@ def do_broadcast(message):
         except: pass
     bot.send_message(ADMIN_ID, f"✅ User {count} ဦးထံ ပို့ပြီးပါပြီ။")
 
-# User တစ်ယောက်တည်းကို စာပြန်ရန် (ဥပမာ- /sent 123456 Hello)
 @bot.message_handler(commands=['sent'])
 def send_to_user(message):
     if message.chat.id == ADMIN_ID:
@@ -85,32 +80,29 @@ def send_to_user(message):
             target_id = parts[1]
             text = parts[2]
             bot.send_message(target_id, f"✉️ **Admin မှ စာပြန်လာသည်:**\n\n{text}", parse_mode="HTML")
-            bot.send_message(ADMIN_ID, "✅ စာပို့ပြီးပါပြီ။")
+            bot.send_message(ADMIN_ID, f"✅ ID {target_id} ထံ စာပို့ပြီးပါပြီ။")
         except:
             bot.send_message(ADMIN_ID, "❌ ပုံစံမှားနေသည်။ `/sent ID စာသား` ဟု ရေးပါ။")
 
-# --- ၅။ MENUS & SHOPPING ---
+# --- 5. SHOPPING LOGIC ---
 
-def main_menu():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("🛍 ဈေးဝယ်ရန်", "🎁 ပိုမိုရှင်း")
-    markup.add("👤 မိမိအကောင့်", "📜 order မှတ်တမ်း")
-    markup.add("📞 Admin ဆက်သွယ်ရန်", "🤝 သင့်ငယ်ချင်းဖိတ်ရန်")
-    return markup
+MLBB_PRICES = {
+    "Wkp 1": "6200", "Twlp": "33000", "Dia 257": "15000", "Dia 878": "50000"
+}
+user_orders = {}
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
     save_user(message.chat.id)
-    bot.send_message(message.chat.id, f"👋 SinceKShop မှ ကြိုဆိုပါတယ် {message.from_user.first_name} ဗျာ။", reply_markup=main_menu())
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🛍 ဈေးဝယ်ရန်", "👤 မိမိအကောင့်")
+    bot.send_message(message.chat.id, f"👋 SinceKShop မှ ကြိုဆိုပါတယ် {message.from_user.first_name} ဗျာ။", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text == "🛍 ဈေးဝယ်ရန်")
-def shop_start(message):
+def shop(message):
     mk = types.InlineKeyboardMarkup()
     mk.add(types.InlineKeyboardButton("🎮 Mobile Legend", callback_data="game_mlbb"))
     bot.send_message(message.chat.id, "🎮 Game ရွေးချယ်ပါ:", reply_markup=mk)
-
-# ... (စျေးနှုန်းများ - အတိုချုံ့ထားသည်) ...
-MLBB_PRICES = {"Wkp 1": "6200", "Dia 257": "15000", "Dia 878": "50000"} # စျေးနှုန်းအစုံ ပြန်ထည့်ပေးပါ
 
 @bot.callback_query_handler(func=lambda call: call.data == "game_mlbb")
 def mlbb_list(call):
@@ -123,7 +115,7 @@ def mlbb_list(call):
 def ask_id(call):
     item = call.data.replace("buy_", "")
     user_orders[call.message.chat.id] = {'item': item, 'price': MLBB_PRICES.get(item)}
-    bot.edit_message_text(f"✅ Selected: {item}\n📝 MLBB ID ပေးပို့ပါ။", call.message.chat.id, call.message.message_id)
+    bot.edit_message_text(f"✅ Selected: {item}\n📝 MLBB ID နှင့် Server ID ပေးပို့ပါ။", call.message.chat.id, call.message.message_id)
     bot.register_next_step_handler(call.message, ask_payment)
 
 def ask_payment(message):
@@ -140,11 +132,11 @@ def show_pay_info(call):
     method = call.data.split("_")[1]
     order = user_orders.get(call.message.chat.id)
     if method == "kpay":
-        pay_dt = f"💰 **KBZ Pay**\nNo: `09982015936`\nName: **Thandar Soe**"
+        pay_dt = f"💰 **KBZ Pay**\nNo: `{KPAY_PHONE}`\nName: **{KPAY_NAME}**"
     else:
-        pay_dt = f"💰 **Wave Pay**\nNo: `09740027247`\nName: **Soe Yan Naing**"
+        pay_dt = f"💰 **Wave Pay**\nNo: `{WAVE_PHONE}`\nName: **{WAVE_NAME}**"
     
-    msg = (f"📝 **Order Summary**\nProduct: {order['item']}\nID: {order['game_id']}\n\n{pay_dt}\n\n⚠️ Screenshot ပို့ပေးပါ။")
+    msg = f"📝 **Order Summary**\nProduct: {order['item']}\nID: {order['game_id']}\n\n{pay_dt}\n\n⚠️ Screenshot ပို့ပေးပါ။"
     bot.edit_message_text(msg, call.message.chat.id, call.message.message_id, parse_mode="HTML")
 
 @bot.message_handler(content_types=['photo'])
@@ -153,7 +145,7 @@ def handle_ss(message):
     if uid in user_orders:
         order = user_orders[uid]
         bot.reply_to(message, "✅ Screenshot ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
-        admin_text = (f"🛒 **NEW ORDER**\n👤 Name: {message.from_user.first_name}\n🆔 UserID: `{uid}`\n📦 Item: {order['item']}\n🆔 Game ID: `{order['game_id']}`")
+        admin_text = f"🛒 **NEW ORDER**\n👤 Name: {message.from_user.first_name}\n🆔 UserID: `{uid}`\n📦 Item: {order['item']}\n🆔 Game ID: `{order['game_id']}`"
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"adm_app_{uid}"),
                types.InlineKeyboardButton("❌ Reject", callback_data=f"adm_rej_{uid}"))
@@ -166,9 +158,10 @@ def admin_action(call):
     if action == "rej":
         bot.send_message(target_uid, "❌ **သင့် Order ကို ပယ်ချလိုက်ပါသည်။**", parse_mode="HTML")
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    # ... (တခြား Approve/Done logic များ) ...
+    elif action == "app":
+        bot.send_message(target_uid, "⌛ **Admin မှ စတင်စစ်ဆေးနေပါပြီ။**", parse_mode="HTML")
 
 if __name__ == "__main__":
     keep_alive()
-    bot.remove_webhook()
+    bot.remove_webhook() # Conflict error ကို ရှင်းရန်
     bot.infinity_polling(none_stop=True, skip_pending=True)
