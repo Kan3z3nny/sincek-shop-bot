@@ -4,10 +4,10 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- 1. SERVER SETUP ---
+# --- 1. SERVER SETUP FOR RENDER ---
 app = Flask('')
 @app.route('/')
-def home(): return "Bot is live!"
+def home(): return "Bot is Online!"
 
 def run():
     port = int(os.environ.get('PORT', 8080))
@@ -63,7 +63,7 @@ def welcome(message):
     mk.add("🛍 ဈေးဝယ်ရန်", "🎁 ပရိုမိုးရှင်း")
     mk.add("👤 မိမိအကောင့်", "📜 order မှတ်တမ်း")
     mk.add("📞 Admin ဆက်သွယ်ရန်", "🤝 သင့်ငယ်ချင်းဖိတ်ရန်")
-    bot.send_message(message.chat.id, "👋 **SinceKShop** မှ ကြိုဆိုပါတယ်ခင်ဗျာ။", reply_markup=mk)
+    bot.send_message(message.chat.id, "👋 <b>SinceKShop</b> မှ ကြိုဆိုပါတယ်ခင်ဗျာ။", reply_markup=mk, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: True)
 def handle_menu(message):
@@ -77,7 +77,7 @@ def handle_menu(message):
         bot.send_message(uid, "ပရိုမိုးရှင်း မရှိသေးပါ 🙏")
 
     elif message.text == "👤 မိမိအကောင့်":
-        bot.send_message(uid, f"👤 <b>မိမိအကောင့်အချက်အလက်</b>\n\nအမည်: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
+        bot.send_message(uid, f"👤 <b>မိမိအကောင့်</b>\n\nအမည်: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
 
     elif message.text == "📜 order မှတ်တမ်း":
         bot.send_message(uid, "📅 သင်၏ Order မှတ်တမ်းမှာ လောလောဆယ် အားနေပါသည်။")
@@ -89,7 +89,7 @@ def handle_menu(message):
         link = "https://t.me/SinceKshop_Bot"
         bot.send_message(uid, f"🔗 သင့်သူငယ်ချင်းများကို ဖိတ်ခေါ်ရန် လင့်ခ်:\n<code>{link}</code>", parse_mode="HTML")
 
-# --- 5. ORDER FLOW ---
+# --- 5. SHOPPING FLOW ---
 @bot.callback_query_handler(func=lambda call: call.data == "game_mlbb")
 def mlbb_list(call):
     mk = types.InlineKeyboardMarkup(row_width=2)
@@ -126,35 +126,35 @@ def show_pay_info(call):
     bot.edit_message_text(msg, call.message.chat.id, call.message.message_id, parse_mode="HTML")
 
 @bot.message_handler(content_types=['photo'])
-def handle_screenshot(message):
+def handle_ss(message):
     uid = message.chat.id
     if uid in user_orders:
         order = user_orders[uid]
         bot.reply_to(message, "✅ Screenshot ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
-        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 User: {message.from_user.first_name}\n🆔 User ID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 Game ID: <code>{order['game_id']}</code>"
+        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 User: {message.from_user.first_name}\n🆔 ID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 Game ID: <code>{order['game_id']}</code>"
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"adm_app_{uid}"),
                types.InlineKeyboardButton("❌ Reject", callback_data=f"adm_rej_{uid}"))
         bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=mk)
 
-# --- 6. ADMIN ACTIONS (FIXED ERROR) ---
+# --- 6. ADMIN ACTIONS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("adm_"))
 def admin_action(call):
     data = call.data.split("_")
-    action = data[1]
-    target_uid = int(data[2])
+    action, target_uid = data[1], int(data[2])
     
     try:
         if action == "app":
-            bot.send_message(target_uid, "⌛ Admin မှ စတင်စစ်ဆေးနေပါပြီ။")
+            bot.send_message(target_uid, "⌛ <b>Admin မှ စတင်စစ်ဆေးနေပါပြီ။</b>", parse_mode="HTML")
             bot.answer_callback_query(call.id, "Approved!")
-            bot.edit_message_caption(caption=call.message.caption + "\n\n✅ <b>Status: Approved</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode="HTML", reply_markup=None)
         elif action == "rej":
-            bot.send_message(target_uid, "❌ သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။")
+            bot.send_message(target_uid, "❌ <b>သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။</b>", parse_mode="HTML")
             bot.answer_callback_query(call.id, "Rejected!")
-            bot.edit_message_caption(caption=call.message.caption + "\n\n❌ <b>Status: Rejected</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode="HTML", reply_markup=None)
-    except Exception as e:
-        bot.answer_callback_query(call.id, f"Error: {e}")
+        
+        # Admin ဆီက ခလုတ်ကို ဖျောက်လိုက်ခြင်း
+        bot.edit_message_reply_markup(ADMIN_ID, call.message.message_id, reply_markup=None)
+    except:
+        pass
 
 # --- 7. BROADCAST ---
 @bot.message_handler(commands=['cast'])
