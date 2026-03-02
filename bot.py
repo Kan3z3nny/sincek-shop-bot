@@ -151,7 +151,6 @@ def admin_action(call):
             bot.send_message(target_uid, "❌ <b>သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။</b>", parse_mode="HTML")
             bot.answer_callback_query(call.id, "Rejected!")
         
-        # Admin ဆီက ခလုတ်ကို ဖျောက်လိုက်ခြင်း
         bot.edit_message_reply_markup(ADMIN_ID, call.message.message_id, reply_markup=None)
     except:
         pass
