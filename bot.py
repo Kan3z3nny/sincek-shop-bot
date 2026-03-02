@@ -4,10 +4,10 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- 1. SERVER SETUP ---
+# --- 1. RENDER SERVER SETUP ---
 app = Flask('')
 @app.route('/')
-def home(): return "SinceKShop is Live!"
+def home(): return "SinceKShop Bot is Alive!"
 
 def run():
     port = int(os.environ.get('PORT', 8080))
@@ -55,7 +55,7 @@ def get_all_users():
             return [line.strip() for line in f.readlines() if line.strip()]
     except: return []
 
-# --- 4. MAIN INTERFACE ---
+# --- 4. MAIN MENU ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     save_user(message.chat.id)
@@ -75,15 +75,15 @@ def handle_menu(message):
     elif message.text == "🎁 ပရိုမိုးရှင်း":
         bot.send_message(uid, "ပရိုမိုးရှင်း မရှိသေးပါ 🙏")
     elif message.text == "👤 မိမိအကောင့်":
-        bot.send_message(uid, f"👤 <b>Account</b>\nName: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
+        bot.send_message(uid, f"👤 <b>Account Info</b>\nName: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
     elif message.text == "📜 order မှတ်တမ်း":
-        bot.send_message(uid, "📜 Order မှတ်တမ်းမရှိသေးပါ။")
+        bot.send_message(uid, "📜 ယခုလောလောဆယ် Order မှတ်တမ်းမရှိသေးပါ။")
     elif message.text == "📞 Admin ဆက်သွယ်ရန်":
         bot.send_message(uid, f"👨‍💻 Admin: {ADMIN_USERNAME}")
     elif message.text == "🤝 သင့်ငယ်ချင်းဖိတ်ရန်":
         bot.send_message(uid, "🤝 https://t.me/SinceKshop_Bot")
 
-# --- 5. SHOPPING & PAYMENT FLOW ---
+# --- 5. SHOPPING FLOW ---
 @bot.callback_query_handler(func=lambda call: call.data == "game_mlbb")
 def mlbb_list(call):
     mk = types.InlineKeyboardMarkup(row_width=2)
@@ -126,43 +126,61 @@ def handle_ss(message):
     uid = message.chat.id
     if uid in user_orders:
         order = user_orders[uid]
-        bot.reply_to(message, "✅ SS ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
-        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 Name: {message.from_user.first_name}\n🆔 UserID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 GameID: <code>{order['game_id']}</code>"
+        bot.reply_to(message, "✅ Screenshot ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
+        
+        # Admin text with HTML format
+        admin_text = (f"🛒 <b>NEW ORDER</b>\n"
+                      f"👤 Name: {message.from_user.first_name}\n"
+                      f"🆔 UserID: <code>{uid}</code>\n"
+                      f"📦 Item: {order['item']}\n"
+                      f"🎮 GameID: <code>{order['game_id']}</code>")
+        
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"adm_app_{uid}"),
                types.InlineKeyboardButton("❌ Reject", callback_data=f"adm_rej_{uid}"))
+        
         bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=mk)
 
-# --- 6. ADMIN ACTIONS ---
+# --- 6. ADMIN ACTIONS (FIXED) ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("adm_"))
 def admin_action(call):
-    _, act, target_uid = call.data.split("_")
-    target_uid = int(target_uid)
+    # Split the callback data safely
+    parts = call.data.split("_")
+    action = parts[1]
+    target_uid = int(parts[2])
+    
     try:
-        if act == "app":
+        if action == "app":
             bot.send_message(target_uid, "⌛ <b>Admin မှ စတင်စစ်ဆေးနေပါပြီ။</b>", parse_mode="HTML")
-        else:
+            bot.answer_callback_query(call.id, "Approved!")
+        elif action == "rej":
             bot.send_message(target_uid, "❌ <b>သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။</b>", parse_mode="HTML")
+            bot.answer_callback_query(call.id, "Rejected!")
         
+        # Remove buttons from admin message after click
         bot.edit_message_reply_markup(ADMIN_ID, call.message.message_id, reply_markup=None)
-        bot.answer_callback_query(call.id, "Done!")
-    except: pass
+    except Exception as e:
+        print(f"Admin Action Error: {e}")
 
 # --- 7. BROADCAST ---
 @bot.message_handler(commands=['cast'])
-def broadcast(message):
+def broadcast_prompt(message):
     if message.chat.id == ADMIN_ID:
-        sent = bot.send_message(ADMIN_ID, "📢 ပို့မည့် စာ သို့မဟုတ် ပုံ ပို့ပေးပါ။")
-        bot.register_next_step_handler(sent, start_cast)
+        sent = bot.send_message(ADMIN_ID, "📢 အားလုံးကိုပို့မည့် စာ သို့မဟုတ် ပုံ ကို ပို့ပေးပါ။")
+        bot.register_next_step_handler(sent, do_broadcast)
 
-def start_cast(message):
+def do_broadcast(message):
     users = get_all_users()
+    count = 0
     for u in users:
         try:
-            if message.content_type == 'photo': bot.send_photo(u, message.photo[-1].file_id, caption=message.caption)
-            else: bot.send_message(u, message.text)
+            if message.content_type == 'photo':
+                bot.send_photo(u, message.photo[-1].file_id, caption=message.caption)
+            else:
+                bot.send_message(u, message.text)
+            count += 1
         except: pass
-    bot.send_message(ADMIN_ID, "✅ ပို့ပြီးပါပြီ။")
+    bot.send_message(ADMIN_ID, f"✅ User {count} ဦးထံ ပို့ပြီးပါပြီ။")
 
 if __name__ == "__main__":
     keep_alive()
