@@ -4,10 +4,10 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- 1. SERVER SETUP FOR RENDER ---
+# --- 1. SERVER SETUP ---
 app = Flask('')
 @app.route('/')
-def home(): return "Bot is Online!"
+def home(): return "SinceKShop is Live!"
 
 def run():
     port = int(os.environ.get('PORT', 8080))
@@ -55,7 +55,7 @@ def get_all_users():
             return [line.strip() for line in f.readlines() if line.strip()]
     except: return []
 
-# --- 4. MAIN MENU ---
+# --- 4. MAIN INTERFACE ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     save_user(message.chat.id)
@@ -63,7 +63,7 @@ def welcome(message):
     mk.add("🛍 ဈေးဝယ်ရန်", "🎁 ပရိုမိုးရှင်း")
     mk.add("👤 မိမိအကောင့်", "📜 order မှတ်တမ်း")
     mk.add("📞 Admin ဆက်သွယ်ရန်", "🤝 သင့်ငယ်ချင်းဖိတ်ရန်")
-    bot.send_message(message.chat.id, "👋 <b>SinceKShop</b> မှ ကြိုဆိုပါတယ်ခင်ဗျာ။", reply_markup=mk, parse_mode="HTML")
+    bot.send_message(message.chat.id, "👋 <b>SinceKShop</b> မှ ကြိုဆိုပါတယ်!", reply_markup=mk, parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: True)
 def handle_menu(message):
@@ -72,24 +72,18 @@ def handle_menu(message):
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("🎮 Mobile Legend", callback_data="game_mlbb"))
         bot.send_message(uid, "🎮 Game ရွေးချယ်ပါ:", reply_markup=mk)
-
     elif message.text == "🎁 ပရိုမိုးရှင်း":
         bot.send_message(uid, "ပရိုမိုးရှင်း မရှိသေးပါ 🙏")
-
     elif message.text == "👤 မိမိအကောင့်":
-        bot.send_message(uid, f"👤 <b>မိမိအကောင့်</b>\n\nအမည်: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
-
+        bot.send_message(uid, f"👤 <b>Account</b>\nName: {message.from_user.first_name}\nID: <code>{uid}</code>", parse_mode="HTML")
     elif message.text == "📜 order မှတ်တမ်း":
-        bot.send_message(uid, "📅 သင်၏ Order မှတ်တမ်းမှာ လောလောဆယ် အားနေပါသည်။")
-
+        bot.send_message(uid, "📜 Order မှတ်တမ်းမရှိသေးပါ။")
     elif message.text == "📞 Admin ဆက်သွယ်ရန်":
-        bot.send_message(uid, f"👨‍💻 Admin ကို ဆက်သွယ်ရန် - {ADMIN_USERNAME}")
-
+        bot.send_message(uid, f"👨‍💻 Admin: {ADMIN_USERNAME}")
     elif message.text == "🤝 သင့်ငယ်ချင်းဖိတ်ရန်":
-        link = "https://t.me/SinceKshop_Bot"
-        bot.send_message(uid, f"🔗 သင့်သူငယ်ချင်းများကို ဖိတ်ခေါ်ရန် လင့်ခ်:\n<code>{link}</code>", parse_mode="HTML")
+        bot.send_message(uid, "🤝 https://t.me/SinceKshop_Bot")
 
-# --- 5. SHOPPING FLOW ---
+# --- 5. SHOPPING & PAYMENT FLOW ---
 @bot.callback_query_handler(func=lambda call: call.data == "game_mlbb")
 def mlbb_list(call):
     mk = types.InlineKeyboardMarkup(row_width=2)
@@ -102,9 +96,9 @@ def ask_id(call):
     item = call.data.replace("buy_", "")
     user_orders[call.message.chat.id] = {'item': item, 'price': MLBB_PRICES[item]}
     bot.edit_message_text(f"✅ Selected: <b>{item}</b>\n\n📝 MLBB ID နှင့် Server ID ပေးပို့ပါ။", call.message.chat.id, call.message.message_id, parse_mode="HTML")
-    bot.register_next_step_handler(call.message, ask_payment_method)
+    bot.register_next_step_handler(call.message, ask_pay_method)
 
-def ask_payment_method(message):
+def ask_pay_method(message):
     uid = message.chat.id
     if uid in user_orders:
         user_orders[uid]['game_id'] = message.text
@@ -119,10 +113,12 @@ def show_pay_info(call):
     order = user_orders.get(call.message.chat.id)
     if not order: return
     
-    pay_dt = f"💰 <b>KBZ Pay</b>\nNo: <code>09982015936</code>\nName: <b>Thandar Soe</b>" if method == "kpay" else f"💰 <b>Wave Pay</b>\nNo: <code>09740027247</code>\nName: <b>Soe Yan Naing</b>"
+    pay_no = "09982015936" if method == "kpay" else "09740027247"
+    pay_name = "Thandar Soe" if method == "kpay" else "Soe Yan Naing"
     
     msg = (f"📋 <b>Order Summary</b>\nProduct: {order['item']}\nID: <code>{order['game_id']}</code>\n\n"
-           f"{pay_dt}\n\n⚠️ ငွေလွှဲပြီး Screenshot ပို့ပေးပါ။")
+           f"💰 <b>{method.upper()}</b>\nNo: <code>{pay_no}</code>\nName: <b>{pay_name}</b>\n\n"
+           f"⚠️ ငွေလွှဲပြီး SS ပို့ပေးပါ။")
     bot.edit_message_text(msg, call.message.chat.id, call.message.message_id, parse_mode="HTML")
 
 @bot.message_handler(content_types=['photo'])
@@ -130,8 +126,8 @@ def handle_ss(message):
     uid = message.chat.id
     if uid in user_orders:
         order = user_orders[uid]
-        bot.reply_to(message, "✅ Screenshot ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
-        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 User: {message.from_user.first_name}\n🆔 ID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 Game ID: <code>{order['game_id']}</code>"
+        bot.reply_to(message, "✅ SS ရရှိပါသည်။ Admin စစ်ဆေးနေပါပြီ။")
+        admin_text = f"🛒 <b>NEW ORDER</b>\n👤 Name: {message.from_user.first_name}\n🆔 UserID: <code>{uid}</code>\n📦 Item: {order['item']}\n🎮 GameID: <code>{order['game_id']}</code>"
         mk = types.InlineKeyboardMarkup()
         mk.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"adm_app_{uid}"),
                types.InlineKeyboardButton("❌ Reject", callback_data=f"adm_rej_{uid}"))
@@ -140,40 +136,33 @@ def handle_ss(message):
 # --- 6. ADMIN ACTIONS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("adm_"))
 def admin_action(call):
-    data = call.data.split("_")
-    action, target_uid = data[1], int(data[2])
-    
+    _, act, target_uid = call.data.split("_")
+    target_uid = int(target_uid)
     try:
-        if action == "app":
+        if act == "app":
             bot.send_message(target_uid, "⌛ <b>Admin မှ စတင်စစ်ဆေးနေပါပြီ။</b>", parse_mode="HTML")
-            bot.answer_callback_query(call.id, "Approved!")
-        elif action == "rej":
+        else:
             bot.send_message(target_uid, "❌ <b>သင့် Order အချက်အလက် မပြည့်စုံသဖြင့် ပယ်ချလိုက်ပါသည်။ ကျေးဇူးပြု၍ Admin ကို ပြန်လည်ဆက်သွယ်ပေးပါ။</b>", parse_mode="HTML")
-            bot.answer_callback_query(call.id, "Rejected!")
         
         bot.edit_message_reply_markup(ADMIN_ID, call.message.message_id, reply_markup=None)
-    except:
-        pass
+        bot.answer_callback_query(call.id, "Done!")
+    except: pass
 
 # --- 7. BROADCAST ---
 @bot.message_handler(commands=['cast'])
 def broadcast(message):
     if message.chat.id == ADMIN_ID:
-        sent = bot.send_message(ADMIN_ID, "📢 အားလုံးကိုပို့မည့် စာ (သို့မဟုတ်) ပုံ ကို ပို့ပေးပါ။")
-        bot.register_next_step_handler(sent, start_broadcasting)
+        sent = bot.send_message(ADMIN_ID, "📢 ပို့မည့် စာ သို့မဟုတ် ပုံ ပို့ပေးပါ။")
+        bot.register_next_step_handler(sent, start_cast)
 
-def start_broadcasting(message):
+def start_cast(message):
     users = get_all_users()
-    count = 0
     for u in users:
         try:
-            if message.content_type == 'photo':
-                bot.send_photo(u, message.photo[-1].file_id, caption=message.caption)
-            else:
-                bot.send_message(u, message.text)
-            count += 1
+            if message.content_type == 'photo': bot.send_photo(u, message.photo[-1].file_id, caption=message.caption)
+            else: bot.send_message(u, message.text)
         except: pass
-    bot.send_message(ADMIN_ID, f"✅ User {count} ယောက်ကို ပို့ပြီးပါပြီ။")
+    bot.send_message(ADMIN_ID, "✅ ပို့ပြီးပါပြီ။")
 
 if __name__ == "__main__":
     keep_alive()
